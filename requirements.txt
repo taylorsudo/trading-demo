@@ -1,0 +1,6 @@
+cs50
+Flask
+Flask-Session
+gunicorn
+psycopg2-binary==2.9.1
+requests
