@@ -13,16 +13,23 @@ app = Flask(__name__)
 # Custom filter
 app.jinja_env.filters["usd"] = usd
 
-# Configure session to use filesystem (instead of signed cookies)
+# Configure Flask to use secure cookies for session data
+app.config["SESSION_COOKIE_SECURE"] = True
+
+# Configure Flask to use the Redis session interface
+app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
+
+# Set the Redis server details from Vercel KV environment variables
+kv_url = os.getenv("KV_URL")
+app.config["SESSION_REDIS"] = kv_url
+
+# Initialise the Flask-Session extension
 Session(app)
 
-# Configure CS50 Library to use PostgreSQL database
-uri = os.getenv("DATABASE_URL")
-if uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://")
-db = SQL(uri)
+# Get environment variables for Postgres
+postgres_url = os.getenv("POSTGRES_URL")
+db = SQL(postgres_url)
 
 
 @app.after_request
