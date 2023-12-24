@@ -20,8 +20,8 @@
         <tr>
             <td class="text-start">{{ row['symbol'] }}</td>
             <td class="text-end">{{ row['shares'] }}</td>
-            <td class="text-end">{{ row['price'] }}</td>
-            <td class="text-end">{{ row['total'] }}</td>
+            <td class="text-end">{{ row['price'] | usd }}</td>
+            <td class="text-end">{{ row['total'] | usd }}</td>
         </tr>
         {% endfor %}
     </tbody>

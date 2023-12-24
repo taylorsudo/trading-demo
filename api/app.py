@@ -68,10 +68,6 @@ def index():
         # Increment total
         total += row["total"]
 
-        # Convert price and total to USD
-        row["price"] = usd(row["price"])
-        row["total"] = usd(row["total"])
-
     # Render home page
     return render_template("index.html", rows=rows, cash=cash[0]["cash"], total=total)
 
