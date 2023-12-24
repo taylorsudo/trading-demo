@@ -314,7 +314,7 @@ def sell():
         symbol = request.form.get("symbol")
         shares = int(request.form.get("shares"))
         quote = lookup(symbol)
-        transacted = datetime.now().strftime("%F %T.%f")[:-4]
+        transacted = datetime.now().strftime("%F %T.%f")
 
         # Get user's portfolio
         rows = db.execute(
