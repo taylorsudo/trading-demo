@@ -2,7 +2,7 @@
 
 Trade stocks risk-free with Trading Simulator. Practice and learn investment strategies in a realistic environment. Explore finance, monitor live stock prices, and make informed decisions for portfolio growth. Trading Simulator helps you refine trading skills and gain insights into the stock market.
 
-[Preview of Problem Set 9 Solution: CS50 Finance](/api/static/screenshot.png)
+![Preview of Problem Set 9 Solution: CS50 Finance](/api/static/screenshot.png)
 
 ## CS50 Finance Solution
 
