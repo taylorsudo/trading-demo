@@ -27,7 +27,10 @@ db = SQL(postgres_url + "?sslmode=require")
 app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
 app.config['SESSION_USE_SIGNER'] = True
-app.config["SESSION_REDIS"] = redis.from_url(os.getenv("KV_URL"))
+kv_url = os.getenv("KV_URL")
+if kv_url.startswith("redis://"):
+    kv_url = kv_url.replace("redis://", "rediss://")
+app.config["SESSION_REDIS"] = redis.from_url(kv_url)
 
 # Initialise the Flask-Session extension
 Session(app)
