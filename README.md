@@ -83,8 +83,6 @@ The following guide was adapted from [David Malan's guide on deploying to Heroku
 
 1. Click the **New Project** button and follow the steps to connect your GitHub repository.
 
-From your Vercel dashboard, navigate to "Storage" and create two databases: a Postgres Database, and a KV Database. These will store your users' account and session data, respectively. Choose whichever names you want, as they don't really matter. From each database, copy the URLs beginning with `postgres://` and `redis://`.
-
 1. From your Vercel dashboard, navigate to **Storage** and click **Create Database**. Select **Postgres** and choose a name for your database. This database will store your users' account data.
 
 1. Navigate to back to **Storage** and click **Create Database** once again. Select **Vercel KV** and choose a name for your database. This database will store your users' session data.
