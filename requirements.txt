@@ -2,4 +2,5 @@ cs50
 Flask
 Flask-Session
 psycopg2-binary==2.9.1
+pytz
 requests
