@@ -83,7 +83,7 @@ def buy():
         symbol = request.form.get("symbol").upper()
         shares = request.form.get("shares")
         quote = lookup(symbol)
-        transacted = datetime.now().strftime("%F %T.%f")[:-4]
+        transacted = datetime.now().strftime("%F %T.%f")
 
         # Render apology if input is blank or symbol does not exist
         if quote == None:

@@ -19,7 +19,7 @@
         {% for row in rows %}
         <tr>
             <td class="text-start">{{ row['symbol'] }}</td>
-            <td class="text-end">{{ row['shares'] }}</td>
+            <td class="text-end">{{ row['shares'] | int }}</td>
             <td class="text-end">{{ row['price'] | usd }}</td>
             <td class="text-end">{{ row['total'] | usd }}</td>
         </tr>
