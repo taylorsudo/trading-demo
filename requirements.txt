@@ -3,4 +3,5 @@ Flask
 Flask-Session
 pytz
 psycopg2-binary
+redis
 requests

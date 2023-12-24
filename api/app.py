@@ -6,6 +6,7 @@ from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from .helpers import apology, login_required, lookup, usd
 from datetime import datetime
+from redis import Redis
 
 # Configure application
 app = Flask(__name__)
@@ -22,7 +23,7 @@ app.config["SESSION_PERMANENT"] = False
 
 # Set the Redis server details from Vercel KV environment variables
 kv_url = os.getenv("KV_URL")
-app.config["SESSION_REDIS"] = kv_url
+app.config["SESSION_REDIS"] = redis.from_url(kv_url)
 
 # Initialise the Flask-Session extension
 Session(app)
