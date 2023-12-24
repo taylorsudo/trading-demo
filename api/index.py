@@ -29,6 +29,8 @@ Session(app)
 
 # Get environment variables for Postgres
 postgres_url = os.getenv("POSTGRES_URL")
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://")
 db = SQL(postgres_url)
 
 
