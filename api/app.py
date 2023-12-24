@@ -18,10 +18,10 @@ app.jinja_env.filters["usd"] = usd
 app.secret_key = os.getenv("SECRET_KEY")
 
 # Get environment variables for Postgres
-postgres_url = os.getenv("POSTGRES_URL" + "?sslmode=require")
+postgres_url = os.getenv("POSTGRES_URL")
 if postgres_url.startswith("postgres://"):
     postgres_url = postgres_url.replace("postgres://", "postgresql://")
-db = SQL(postgres_url)
+db = SQL(postgres_url + "?sslmode=require")
 
 # Configure Flask to use the Redis session interface
 app.config["SESSION_TYPE"] = "redis"
