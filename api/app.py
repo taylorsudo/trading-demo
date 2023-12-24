@@ -27,7 +27,7 @@ Session(app)
 postgres_url = os.getenv("POSTGRES_URL")
 if postgres_url.startswith("postgres://"):
     postgres_url = postgres_url.replace("postgres://", "postgresql://")
-db = SQL(postgres_url)
+db = SQL(postgres_url + "?sslmode=require")
 
 
 @app.after_request
