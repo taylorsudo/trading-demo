@@ -3,5 +3,5 @@ Flask
 Flask-Session
 pytz
 psycopg2-binary
-redis
+redis==3.5.3
 requests

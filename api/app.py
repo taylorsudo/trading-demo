@@ -1,4 +1,5 @@
 import os
+import redis
 
 from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session
@@ -16,18 +17,20 @@ app.jinja_env.filters["usd"] = usd
 # Configure secret key
 app.secret_key = os.getenv("SECRET_KEY")
 
-# Configure session to use filesystem (instead of signed cookies)
+# Get environment variables for Postgres
+postgres_url = os.getenv("POSTGRES_URL" + "?sslmode=require")
+if postgres_url.startswith("postgres://"):
+    postgres_url = postgres_url.replace("postgres://", "postgresql://")
+db = SQL(postgres_url)
+
+# Configure Flask to use the Redis session interface
+app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
+app.config['SESSION_USE_SIGNER'] = True
+app.config["SESSION_REDIS"] = redis.from_url(os.getenv("KV_URL"))
 
 # Initialise the Flask-Session extension
 Session(app)
-
-# Get environment variables for Postgres
-postgres_url = os.getenv("POSTGRES_URL")
-if postgres_url.startswith("postgres://"):
-    postgres_url = postgres_url.replace("postgres://", "postgresql://")
-db = SQL(postgres_url + "?sslmode=require")
 
 
 @app.after_request
