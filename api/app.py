@@ -17,14 +17,9 @@ app.jinja_env.filters["usd"] = usd
 # Configure secret key
 app.secret_key = os.getenv("SECRET_KEY")
 
-# Configure Flask to use secure cookies for session data
-app.config["SESSION_COOKIE_SECURE"] = True
-
-# Configure Flask to use the Redis session interface
-app.config["SESSION_TYPE"] = "redis"
+# Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_PERMANENT"] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config["SESSION_REDIS"] = redis.from_url(os.getenv("KV_URL"))
+app.config["SESSION_TYPE"] = "filesystem"
 
 # Initialise the Flask-Session extension
 Session(app)
