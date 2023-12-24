@@ -2,7 +2,7 @@
 
 Trade stocks risk-free with Trading Simulator. Practice and learn investment strategies in a realistic environment. Explore finance, monitor live stock prices, and make informed decisions for portfolio growth. Trading Simulator helps you refine trading skills and gain insights into the stock market.
 
-[Preview of Problem Set 9 Solution: CS50 Finance](api/static/screenshot.png)
+[Preview of Problem Set 9 Solution: CS50 Finance](/api/static/screenshot.png)
 
 ## CS50 Finance Solution
 
@@ -162,7 +162,7 @@ The following guide was adapted from [David Malan's guide on deploying to Heroku
     }
     ```
 
-   That file will tell Vercel to look in a file called `app.py` for a variable called `app` and serve it with Python.
+    That file will tell Vercel to look in a file called `app.py` for a variable called `app` and serve it with Python.
 
 1.  Push your changes to GitHub.
 
