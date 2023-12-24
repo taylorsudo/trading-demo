@@ -24,7 +24,7 @@ app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
 app.config['SESSION_USE_SIGNER'] = True
-app.config["SESSION_REDIS"] = os.getenv("KV_URL")
+app.config["SESSION_REDIS"] = redis.from_url(os.getenv("KV_URL"))
 
 # Initialise the Flask-Session extension
 Session(app)
