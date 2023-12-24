@@ -26,7 +26,7 @@ kv_url = os.getenv("KV_URL")
 app.config["SESSION_REDIS"] = redis.from_url(kv_url)
 
 # Initialise the Flask-Session extension
-Session(app)
+server_session = Session(app)
 
 # Get environment variables for Postgres
 postgres_url = os.getenv("POSTGRES_URL")
