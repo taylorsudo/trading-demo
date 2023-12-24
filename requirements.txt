@@ -5,3 +5,4 @@ pytz
 psycopg2-binary
 redis
 requests
+Werkzeug==2.3.7
