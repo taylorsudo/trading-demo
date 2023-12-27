@@ -38,10 +38,10 @@ Session(app)
 
 @app.after_request
 def after_request(response):
-    """Ensure responses aren't cached"""
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Expires"] = 0
-    response.headers["Pragma"] = "no-cache"
+    """Ensure responses aren't cached for the root route"""
+    if request.path == '/':
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Expires"] = 0
     return response
 
 
