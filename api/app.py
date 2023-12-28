@@ -4,7 +4,7 @@ import redis
 from cs50 import SQL
 from datetime import datetime, timedelta
 from dotenv import load_dotenv # environment variables
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from helpers import login_required, lookup, usd # .helpers
@@ -45,6 +45,14 @@ def after_request(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Expires"] = 0
     return response
+
+
+@app.route("/get_data")
+@login_required
+def get_data():
+    tabs = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y']
+    data = get_tab_data(tabs)
+    return jsonify(data)
 
 
 # Define calculator function
@@ -93,13 +101,6 @@ def get_tab_data(tabs):
         data[tab] = {'total_gains_losses': total_gains_losses, 'transactions': transactions}
 
     return data
-
-
-@app.route('/load_content')
-def load_content():
-    tabs = request.args.getlist('tab_id') or ['1D']
-    data = get_tab_data(tabs)
-    return render_template('tab-content.html', tabs=tabs, data=data)
 
 
 @app.route("/")

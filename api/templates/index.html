@@ -48,51 +48,41 @@ Portfolio
     <section class="tab-content mt-2">
         {% for tab in tabs %}
         <article class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}-content">
-            <!-- Content for {{ tab }} tab -->
+            <div id="{{ tab }}-gains-losses"><!-- Placeholder for total gains/losses --></div>
         </article>
         {% endfor %}
     </section>
 </article>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Load initial content on page load
-        var initialTab = '{{ tabs[0] }}';  // Get the initial tab ID here
-        loadTabContent(initialTab);
-
-        // Event handling for tab clicks
-        var tabs = document.querySelectorAll('#timeScaleTabs a');
-
-        tabs.forEach(function(tab) {
-            tab.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                // Remove 'active' class from all tabs
-                tabs.forEach(function(t) {
-                    t.classList.remove('active');
-                });
-
-                // Add 'active' class to the clicked tab
-                this.classList.add('active');
-
-                // Load content for the selected tab
-                var selectedTab = this.getAttribute('id');
-                loadTabContent(selectedTab);
-            });
-        });
-
-        function loadTabContent(tabId) {
-            // Fetch data for the selected tab using XMLHttpRequest
+    document.addEventListener("DOMContentLoaded", function () {
+        // Function to update total gains/losses based on the selected time scale
+        function updateGainsLosses(tab) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/load_content?tab_id=' + tabId, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    // Update the content of the corresponding tab
-                    document.getElementById(tabId + '-content').innerHTML = xhr.responseText;
+            xhr.open("GET", "/get_data?tab=" + tab, true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    var content = data[tab];
+                    var gainsLosses = content.total_gains_losses;
+                    document.getElementById(tab + "-gains-losses").innerHTML = "Total Gains/Losses: " + gainsLosses;
                 }
             };
             xhr.send();
         }
+
+        // Event listener for tab clicks
+        var tabs = document.querySelectorAll("#timeScaleTabs a");
+        tabs.forEach(function (tab) {
+            tab.addEventListener("click", function () {
+                var tabId = this.id;
+                updateGainsLosses(tabId);
+            });
+        });
+
+        // Initial load (for the default active tab)
+        var defaultTab = document.querySelector("#timeScaleTabs .active").id;
+        updateGainsLosses(defaultTab);
     });
 </script>
 
