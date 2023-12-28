@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Portfolio
+Portfolio
 {% endblock %}
 
 {% block main %}
@@ -36,5 +36,64 @@
         </tr>
     </tfoot>
 </table>
+
+<article class="container mt-5">
+    <nav class="nav nav-pills nav-justified" id="timeScaleTabs">
+        {% for tab in tabs %}
+        <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ tab }}" data-bs-toggle="pill"
+            href="#{{ tab }}-content">{{ tab }}</a>
+        {% endfor %}
+    </nav>
+
+    <section class="tab-content mt-2">
+        {% for tab in tabs %}
+        <article class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}-content">
+            <!-- Content for {{ tab }} tab -->
+        </article>
+        {% endfor %}
+    </section>
+</article>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load initial content on page load
+        var initialTab = '{{ tabs[0] }}';  // Get the initial tab ID here
+        loadTabContent(initialTab);
+
+        // Event handling for tab clicks
+        var tabs = document.querySelectorAll('#timeScaleTabs a');
+
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Remove 'active' class from all tabs
+                tabs.forEach(function(t) {
+                    t.classList.remove('active');
+                });
+
+                // Add 'active' class to the clicked tab
+                this.classList.add('active');
+
+                // Load content for the selected tab
+                var selectedTab = this.getAttribute('id');
+                loadTabContent(selectedTab);
+            });
+        });
+
+        function loadTabContent(tabId) {
+            // Fetch data for the selected tab using XMLHttpRequest
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/load_content?tab_id=' + tabId, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    // Update the content of the corresponding tab
+                    document.getElementById(tabId + '-content').innerHTML = xhr.responseText;
+                }
+            };
+            xhr.send();
+        }
+    });
+</script>
 
 {% endblock %}

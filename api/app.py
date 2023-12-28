@@ -2,11 +2,15 @@ import os
 import redis
 
 from cs50 import SQL
+from datetime import datetime, timedelta
+from dotenv import load_dotenv # environment variables
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
-from .helpers import apology, login_required, lookup, usd
-from datetime import datetime
+from helpers import login_required, lookup, usd # .helpers
+
+# Load environment variables
+load_dotenv('/workspaces/126066949/project/vercel.env')
 
 # Configure application
 app = Flask(__name__)
@@ -15,7 +19,7 @@ app = Flask(__name__)
 app.jinja_env.filters["usd"] = usd
 
 # Configure secret key
-app.secret_key = os.getenv("SECRET_KEY")
+# app.secret_key = os.getenv("SECRET_KEY")
 
 # Get environment variables for Postgres
 postgres_url = os.getenv("POSTGRES_URL")
@@ -26,7 +30,7 @@ db = SQL(postgres_url + "?sslmode=require")
 # Configure Flask to use the Redis session interface
 app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
-app.config['SESSION_USE_SIGNER'] = True
+# app.config['SESSION_USE_SIGNER'] = True
 kv_url = os.getenv("KV_URL")
 if kv_url.startswith("redis://"):
     kv_url = kv_url.replace("redis://", "rediss://")
@@ -35,30 +39,85 @@ app.config["SESSION_REDIS"] = redis.from_url(kv_url)
 # Initialise the Flask-Session extension
 Session(app)
 
-
 @app.after_request
 def after_request(response):
-    """Ensure responses aren't cached for the root route"""
-    if request.path == '/':
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Expires"] = 0
+    """Ensure responses aren't cached"""
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Expires"] = 0
     return response
+
+
+# Define calculator function
+def calculate_gains_losses(timescale_days):
+    start_date = datetime.now() - timedelta(days=timescale_days)
+
+    query = """
+        SELECT symbol, shares, transaction_type, price, transacted
+        FROM history
+        WHERE user_id = :user_id AND transacted >= :start_date
+    """
+
+    print("SQL Query:", query)
+
+    transactions = db.execute(query, user_id=session["user_id"], start_date=start_date)
+
+    # Calculate total gains/losses
+    total_gains_losses = sum(
+        -trans["shares"] * trans["price"] if trans["transaction_type"] == "buy" else trans["shares"] * trans["price"]
+        for trans in transactions
+    )
+
+    print("Total Gains/Losses:", total_gains_losses)
+
+    return total_gains_losses, transactions
+
+
+# Get tab data for multiple time scales
+def get_tab_data(tabs):
+    timescale = {
+        '1D': 1,
+        '5D': 5,
+        '1M': 30,
+        '6M': 180,
+        'YTD': (datetime.now() - datetime(datetime.now().year, 1, 1)).days,
+        '1Y': 365,
+        '5Y': 5 * 365
+    }
+
+    data = {}
+
+    for tab in tabs:
+        timescale_days = timescale.get(tab, 1)
+        total_gains_losses, transactions = calculate_gains_losses(timescale_days)
+
+        data[tab] = {'total_gains_losses': total_gains_losses, 'transactions': transactions}
+
+    return data
+
+
+@app.route('/load_content')
+def load_content():
+    tabs = request.args.getlist('tab_id') or ['1D']
+    data = get_tab_data(tabs)
+    return render_template('tab-content.html', tabs=tabs, data=data)
 
 
 @app.route("/")
 @login_required
 def index():
     """Show portfolio of stocks"""
+    tabs = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y']
 
     # SELECT user's portfolio and cash
     rows = db.execute(
-        "SELECT * FROM portfolios WHERE user_id = ? ORDER BY symbol ASC",
-        session["user_id"],
+        "SELECT * FROM portfolios WHERE user_id = :user_id ORDER BY symbol ASC",
+        user_id=session["user_id"],
     )
-    cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
+    cash = db.execute("SELECT cash FROM users WHERE id = :user_id", user_id=session["user_id"])
 
-    # Initialise total
-    total = cash[0]["cash"]
+    # Check if cash is not empty before accessing its elements
+    cash_value = cash[0]["cash"] if cash else 0
+    total = cash_value
 
     # Get stock name, current value, and total value
     for row in rows:
@@ -69,7 +128,7 @@ def index():
         total += row["total"]
 
     # Render home page
-    return render_template("index.html", rows=rows, cash=cash[0]["cash"], total=total)
+    return render_template("index.html", rows=rows, cash=cash_value, total=total, tabs=tabs)
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -85,21 +144,24 @@ def buy():
         quote = lookup(symbol)
         transacted = datetime.now().strftime("%F %T.%f")
 
-        # Render apology if input is blank or symbol does not exist
+        # Flash error if input is blank or symbol does not exist
         if quote == None:
-            return apology("Must provide valid symbol", 400)
+            flash("Symbol not found", "danger")
+            return redirect("/buy")
 
         # If shares is digit, convert shares to integer
         if shares.isdigit():
             shares = int(request.form.get("shares"))
 
-        # Else render apology
+        # Else flash error
         else:
-            return apology("You cannot purchase partial shares", 400)
+            flash("You cannot purchase partial shares", "danger")
+            return redirect("/buy")
 
-        # Render apology if number of shares not given
+        # Flash error if number of shares not given
         if not shares:
-            return apology("Must provide number of shares", 400)
+            flash("Must provide number of shares", "danger")
+            return redirect("/buy")
 
         # Calculate cost of transaction
         cost = quote["price"] * shares
@@ -108,13 +170,14 @@ def buy():
         balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
         balance = balance[0]["cash"]
 
-        # Render apology if balance less than cost
+        # Flash error if balance less than cost
         if balance < cost:
-            return apology("Insufficient funds", 400)
+            flash("Insufficient funds", "danger")
+            return redirect("/buy")
 
         # Update history table
         db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, transacted) VALUES (?,?,?,?,?)",
+            "INSERT INTO history (user_id, symbol, shares, price, transaction_type, transacted) VALUES (?,?,?,?,'buy',?)",
             session["user_id"],
             symbol,
             shares,
@@ -161,7 +224,7 @@ def buy():
         )
 
         # Flash message
-        flash(f"Purchased {shares} share(s) of {symbol}")
+        flash(f"Purchased {shares} share(s) of {symbol}", "success")
 
         # Redirect user to home page
         return redirect("/")
@@ -195,11 +258,13 @@ def login():
     if request.method == "POST":
         # Ensure username was submitted
         if not request.form.get("username"):
-            return apology("Must provide username", 400)
+            flash("Must provide username", "danger")
+            return redirect("/login")
 
         # Ensure password was submitted
         elif not request.form.get("password"):
-            return apology("Must provide password", 400)
+            flash("Must provide password", "danger")
+            return redirect("/login")
 
         # Query database for username
         rows = db.execute(
@@ -210,7 +275,8 @@ def login():
         if len(rows) != 1 or not check_password_hash(
             rows[0]["hash"], request.form.get("password")
         ):
-            return apology("Invalid username and/or password", 400)
+            flash("Invalid username and/or password", "danger")
+            return redirect("/login")
 
         # Remember which user has logged in
         session["user_id"] = rows[0]["id"]
@@ -246,14 +312,17 @@ def quote():
 
         # Ensure user provides symbol
         if not symbol:
-            return apology("Must provide symbol", 400)
+            flash("Symbol is required", "danger")
+            return redirect("/quote")
 
         # Ensure stock is valid
         elif symbol == None:
-            return apology("Stock not found", 400)
+            flash("Invalid stock symbol", "danger")
+            return redirect("/quote")
 
         # Display the results
-        return render_template("quoted.html", symbol=symbol)
+        flash(f"A share of {symbol['symbol']} costs ${symbol['price']}.", "primary")
+        return redirect("/quote")
 
     # Else if requested via GET, display quote form
     else:
@@ -271,15 +340,18 @@ def register():
     if request.method == "POST":
         # Ensure username was submitted
         if not request.form.get("username"):
-            return apology("Must provide username", 400)
+            flash("Must provide username", "danger")
+            return redirect("/register")
 
         # Ensure password was submitted
         elif not request.form.get("password"):
-            return apology("Must provide password", 400)
+            flash("Must provide password", "danger")
+            return redirect("/register")
 
         # Ensure password matches confirmation
         elif request.form.get("password") != request.form.get("confirmation"):
-            return apology("Passwords do not match", 400)
+            flash("Passwords do not match", "danger")
+            return redirect("/register")
 
         # Store username and password hash
         username = request.form.get("username")
@@ -290,7 +362,8 @@ def register():
 
         # Ensure username doesn't exist
         if len(rows) != 0:
-            return apology("Username is already taken", 400)
+            flash("Username is already taken", "danger")
+            return redirect("/register")
 
         # Insert new user into users table
         db.execute("INSERT INTO users (username, hash) VALUES (?,?)", username, hash)
@@ -325,15 +398,18 @@ def sell():
 
         # Ensure symbol exists in portfolio
         if len(rows) != 1:
-            return apology("Must provide valid stock symbol", 400)
+            flash("Must provide valid stock symbol", "danger")
+            return redirect("/sell")
 
         # Ensure user provides shares
         if not shares:
-            return apology("Must provide number of shares", 400)
+            flash("Must provide number of shares", "danger")
+            return redirect("/sell")
 
         # Ensure user has enough shares
         if rows[0]["shares"] < shares:
-            return apology("Insufficient shares", 400)
+            flash("Insufficient shares", "danger")
+            return redirect("/sell")
 
         # Add total sale value to cash balance
         cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
@@ -367,7 +443,7 @@ def sell():
 
         # Update history table
         db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, transacted) VALUES (?,?,?,?,?)",
+            "INSERT INTO history (user_id, symbol, shares, price, transaction_type, transacted) VALUES (?,?,?,?,'sell',?)",
             session["user_id"],
             symbol,
             "-" + shares,
@@ -376,7 +452,7 @@ def sell():
         )
 
         # Flash message
-        flash(f"Sold {shares} share(s) of {symbol}")
+        flash(f"Sold {shares} share(s) of {symbol}", "success")
 
         # Redirect user to home page
         return redirect("/")
@@ -420,7 +496,8 @@ def password():
             or not request.form.get("new_password")
             or not request.form.get("confirm_password")
         ):
-            return apology("Must provide password", 400)
+            flash("Must provide password", "danger")
+            return redirect("/account")
 
         # Get user input from form
         old = request.form.get("old_password")
@@ -433,11 +510,13 @@ def password():
 
         # Ensure user inputs correct password
         if not check_password_hash(hash, old):
-            return apology("Incorrect password", 400)
+            flash("Incorrect password", "danger")
+            return redirect("/account")
 
         # If confirmation doesn't match password
         if new != confirmation:
-            return apology("Passwords do not match", 400)
+            flash("Passwords do not match", "danger")
+            return redirect("/account")
 
         # Hash new password
         hash = generate_password_hash(new)
@@ -446,10 +525,10 @@ def password():
         db.execute("UPDATE users SET hash = ? WHERE id = ?", hash, session["user_id"])
 
         # Flash message
-        flash("Password changed successfully")
+        flash("Password changed successfully", "success")
 
         # Return account page
-        return render_template("account.html")
+        return redirect("/account")
 
     # Else if requested via GET, display account page
     else:
