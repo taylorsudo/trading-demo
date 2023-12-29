@@ -3,14 +3,14 @@ import redis
 
 from cs50 import SQL
 from datetime import datetime, timedelta
-from dotenv import load_dotenv # environment variables
+from dotenv import load_dotenv  # environment variables
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
-from helpers import login_required, lookup, usd # .helpers
+from helpers import login_required, lookup, usd  # .helpers
 
 # Load environment variables
-load_dotenv('/workspaces/126066949/project/vercel.env')
+load_dotenv("/workspaces/126066949/project/vercel.env")
 
 # Configure application
 app = Flask(__name__)
@@ -39,6 +39,7 @@ app.config["SESSION_REDIS"] = redis.from_url(kv_url)
 # Initialise the Flask-Session extension
 Session(app)
 
+
 @app.after_request
 def after_request(response):
     """Ensure responses aren't cached"""
@@ -52,7 +53,15 @@ def after_request(response):
 def get_data():
     tabs = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y']
     data = get_tab_data(tabs)
-    return jsonify(data)
+
+    chart_data = {}
+    for tab, tab_data in data.items():
+        chart_data[tab] = {
+            'data': [(i, trans['price']) for i, trans in enumerate(tab_data['transactions'])],
+            'total_gains_losses': tab_data['total_gains_losses']
+        }
+
+    return jsonify(chart_data)
 
 
 # Define calculator function
@@ -71,7 +80,9 @@ def calculate_gains_losses(timescale_days):
 
     # Calculate total gains/losses
     total_gains_losses = sum(
-        -trans["shares"] * trans["price"] if trans["transaction_type"] == "buy" else trans["shares"] * trans["price"]
+        -trans["shares"] * trans["price"]
+        if trans["transaction_type"] == "buy"
+        else trans["shares"] * trans["price"]
         for trans in transactions
     )
 
@@ -83,13 +94,13 @@ def calculate_gains_losses(timescale_days):
 # Get tab data for multiple time scales
 def get_tab_data(tabs):
     timescale = {
-        '1D': 1,
-        '5D': 5,
-        '1M': 30,
-        '6M': 180,
-        'YTD': (datetime.now() - datetime(datetime.now().year, 1, 1)).days,
-        '1Y': 365,
-        '5Y': 5 * 365
+        "1D": 1,
+        "5D": 5,
+        "1M": 30,
+        "6M": 180,
+        "YTD": (datetime.now() - datetime(datetime.now().year, 1, 1)).days,
+        "1Y": 365,
+        "5Y": 5 * 365,
     }
 
     data = {}
@@ -98,7 +109,10 @@ def get_tab_data(tabs):
         timescale_days = timescale.get(tab, 1)
         total_gains_losses, transactions = calculate_gains_losses(timescale_days)
 
-        data[tab] = {'total_gains_losses': total_gains_losses, 'transactions': transactions}
+        data[tab] = {
+            "total_gains_losses": total_gains_losses,
+            "transactions": transactions,
+        }
 
     return data
 
@@ -107,14 +121,16 @@ def get_tab_data(tabs):
 @login_required
 def index():
     """Show portfolio of stocks"""
-    tabs = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y']
+    tabs = ["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y"]
 
     # SELECT user's portfolio and cash
     rows = db.execute(
         "SELECT * FROM portfolios WHERE user_id = :user_id ORDER BY symbol ASC",
         user_id=session["user_id"],
     )
-    cash = db.execute("SELECT cash FROM users WHERE id = :user_id", user_id=session["user_id"])
+    cash = db.execute(
+        "SELECT cash FROM users WHERE id = :user_id", user_id=session["user_id"]
+    )
 
     # Check if cash is not empty before accessing its elements
     cash_value = cash[0]["cash"] if cash else 0
@@ -129,7 +145,9 @@ def index():
         total += row["total"]
 
     # Render home page
-    return render_template("index.html", rows=rows, cash=cash_value, total=total, tabs=tabs)
+    return render_template(
+        "index.html", rows=rows, cash=cash_value, total=total, tabs=tabs
+    )
 
 
 @app.route("/buy", methods=["GET", "POST"])
