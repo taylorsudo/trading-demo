@@ -6,6 +6,26 @@
 
 {% block main %}
 
+<!-- Gains/Losses -->
+<article class="container mt-5">
+    <nav class="nav nav-pills nav-justified" id="timeScaleTabs">
+        {% for tab in tabs %}
+        <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ tab }}" data-bs-toggle="pill"
+            href="#{{ tab }}-content">{{ tab }}</a>
+        {% endfor %}
+    </nav>
+
+    <section class="tab-content mt-2">
+        {% for tab in tabs %}
+        <article class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}-content">
+            <h2 id="{{ tab }}-gains-losses"><!-- Placeholder for total gains/losses --></h2>
+            <canvas id="{{ tab }}-chart"><!-- Placeholder for chart --></canvas>
+        </article>
+        {% endfor %}
+    </section>
+</article>
+
+<!-- Portfolio -->
 <table class="table table-striped">
     <thead>
         <tr>
@@ -36,24 +56,6 @@
         </tr>
     </tfoot>
 </table>
-
-<article class="container mt-5">
-    <nav class="nav nav-pills nav-justified" id="timeScaleTabs">
-        {% for tab in tabs %}
-        <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ tab }}" data-bs-toggle="pill"
-            href="#{{ tab }}-content">{{ tab }}</a>
-        {% endfor %}
-    </nav>
-
-    <section class="tab-content mt-2">
-        {% for tab in tabs %}
-        <article class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}-content">
-            <div id="{{ tab }}-gains-losses"><!-- Placeholder for total gains/losses --></div>
-            <canvas id="{{ tab }}-chart"></canvas>
-        </article>
-        {% endfor %}
-    </section>
-</article>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="../static/scripts.js"></script>

@@ -1,55 +1,41 @@
 document.addEventListener("DOMContentLoaded", function() {
-    function updateGainsLosses(tab) {
+    function updateTab(tab) {
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/get_data?tab=" + tab, true);
+        xhr.open("GET", "/timescale?tab=" + tab, true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState == 4 && xhr.status == 200) {
                 var data = JSON.parse(xhr.responseText);
 
+                // Extract the chart data
+                var chartData = data[tab].chart_data;
+
                 // Get the canvas element
                 var canvas = document.getElementById(tab + "-chart");
+                var ctx = canvas.getContext("2d");
 
-                // Extract the chart data and total gains/losses
-                var chartData = data[tab].data;
-                var totalGainsLosses = data[tab].total_gains_losses;
+                // Clear previous chart if exists
+                if (window.myLineChart) {
+                    window.myLineChart.destroy();
+                }
+
+                // Create arrays for labels (dates) and data points (balances)
+                var labels = Object.keys(chartData);
+                var dataPoints = Object.values(chartData);
 
                 // Create the line chart
-                new Chart(canvas, {
+                window.myLineChart = new Chart(ctx, {
                     type: 'line',
                     data: {
+                        labels: labels,
                         datasets: [{
-                            label: tab,
-                            data: chartData,
+                            label: 'Balance',
+                            data: dataPoints,
                             borderColor: 'blue',
                             fill: false
                         }]
                     },
                     options: {
-                        responsive: true,
-                        scales: {
-                            x: {
-                                type: 'linear',
-                                position: 'bottom',
-                                title: {
-                                    display: true,
-                                    text: 'Time'
-                                }
-                            },
-                            y: {
-                                type: 'linear',
-                                position: 'left',
-                                title: {
-                                    display: true,
-                                    text: 'Price'
-                                }
-                            }
-                        },
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Total Gains/Losses: ' + totalGainsLosses
-                            }
-                        }
+                        responsive: true
                     }
                 });
             }
@@ -62,11 +48,11 @@ document.addEventListener("DOMContentLoaded", function() {
     tabs.forEach(function(tab) {
         tab.addEventListener("click", function() {
             var tabId = this.id;
-            updateGainsLosses(tabId);
+            updateTab(tabId);
         });
     });
 
     // Initial load (for the default active tab)
     var defaultTab = document.querySelector("#timeScaleTabs .active").id;
-    updateGainsLosses(defaultTab);
+    updateTab(defaultTab);
 });

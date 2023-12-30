@@ -40,90 +40,107 @@ app.config["SESSION_REDIS"] = redis.from_url(kv_url)
 Session(app)
 
 
-@app.after_request
-def after_request(response):
-    """Ensure responses aren't cached"""
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Expires"] = 0
-    return response
+# Initialise timescale variable
+timescale = {
+    "1D": 1,
+    "5D": 5,
+    "1M": 30,
+    "6M": 180,
+    "YTD": (datetime.now() - datetime(datetime.now().year, 1, 1)).days,
+    "1Y": 365,
+    "5Y": 5 * 365,
+}
 
 
-@app.route("/get_data")
-@login_required
-def get_data():
-    tabs = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y']
-    data = get_tab_data(tabs)
+def get_timescale_value(key):
+    # Get value of timescale key
+    num_days = timescale.get(f"{key.upper()}")
 
-    chart_data = {}
-    for tab, tab_data in data.items():
-        chart_data[tab] = {
-            'data': [(i, trans['price']) for i, trans in enumerate(tab_data['transactions'])],
-            'total_gains_losses': tab_data['total_gains_losses']
-        }
-
-    return jsonify(chart_data)
+    # Return earliest date for the given timescale
+    date = datetime.now() - timedelta(days=num_days)
+    return date
 
 
-# Define calculator function
-def calculate_gains_losses(timescale_days):
-    start_date = datetime.now() - timedelta(days=timescale_days)
+def get_balance_history(key):
+    # Get earliest date from function
+    start_date = get_timescale_value(key)
 
+    # Retrieve balance history from earliest to latest
     query = """
-        SELECT symbol, shares, transaction_type, price, transacted
+        SELECT transacted, balance
         FROM history
         WHERE user_id = :user_id AND transacted >= :start_date
+        ORDER BY transacted ASC
     """
 
-    print("SQL Query:", query)
+    # Get list of dictionaries (hash maps)
+    balance_history = db.execute(query, user_id=session["user_id"], start_date=start_date)
 
-    transactions = db.execute(query, user_id=session["user_id"], start_date=start_date)
+    # Pass values into single dictionary
+    dictionary = {}
+    for transaction in balance_history:
+        date_str = transaction["transacted"].strftime("%Y-%m-%d")
+        dictionary[date_str] = transaction["balance"]
 
-    # Calculate total gains/losses
-    total_gains_losses = sum(
-        -trans["shares"] * trans["price"]
-        if trans["transaction_type"] == "buy"
-        else trans["shares"] * trans["price"]
-        for trans in transactions
-    )
-
-    print("Total Gains/Losses:", total_gains_losses)
-
-    return total_gains_losses, transactions
+    return dictionary
 
 
-# Get tab data for multiple time scales
-def get_tab_data(tabs):
-    timescale = {
-        "1D": 1,
-        "5D": 5,
-        "1M": 30,
-        "6M": 180,
-        "YTD": (datetime.now() - datetime(datetime.now().year, 1, 1)).days,
-        "1Y": 365,
-        "5Y": 5 * 365,
-    }
+def calculate_gains_losses(key):
+    balance_history = get_balance_history(key)
 
+    # Initialize gain_loss dictionary to store gain or loss for each date
+    gain_loss = {}
+
+    # Get sorted list of dates from balance history
+    dates = sorted(balance_history.keys())
+
+    # Calculate gain or loss for each date
+    for i in range(len(dates)):
+        date = dates[i]
+        balance = balance_history[date]
+
+        # Calculate gain or loss for the current date
+        if i == 0:
+            gain_loss[date] = 0  # Initial date, set gain_loss to 0
+        else:
+            previous_balance = balance_history[dates[i - 1]]
+            gain_loss[date] = balance - previous_balance
+
+    return gain_loss
+
+
+@app.route('/timescale', methods=['GET'])
+@login_required
+def jsonify_data():
+    tab = request.args.get("tab")
+    balance_history = get_balance_history(tab)
+    gain_loss = calculate_gains_losses(tab)
     data = {}
+    chart_data = {}
 
-    for tab in tabs:
-        timescale_days = timescale.get(tab, 1)
-        total_gains_losses, transactions = calculate_gains_losses(timescale_days)
+    # Add the date and balance to the chart_data dictionary
+    for date_str, balance in balance_history.items():
+        chart_data[date_str] = balance
 
+    # Add 'gain_loss' and 'chart_data' to the 'data' dictionary
+    for date_str, balance in balance_history.items():
         data[tab] = {
-            "total_gains_losses": total_gains_losses,
-            "transactions": transactions,
+            "gain_loss": gain_loss.get(date_str, 0),  # Use get method to handle missing dates
+            "chart_data": chart_data
         }
 
-    return data
+    print(data)
+
+    return jsonify(data)
 
 
 @app.route("/")
 @login_required
 def index():
     """Show portfolio of stocks"""
-    tabs = ["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y"]
+    tabs = list(timescale.keys())
 
-    # SELECT user's portfolio and cash
+    # Get user's portfolio and cash
     rows = db.execute(
         "SELECT * FROM portfolios WHERE user_id = :user_id ORDER BY symbol ASC",
         user_id=session["user_id"],
@@ -134,7 +151,7 @@ def index():
 
     # Check if cash is not empty before accessing its elements
     cash_value = cash[0]["cash"] if cash else 0
-    total = cash_value
+    total = cash_value if cash_value else 0
 
     # Get stock name, current value, and total value
     for row in rows:
@@ -194,16 +211,6 @@ def buy():
             flash("Insufficient funds", "danger")
             return redirect("/buy")
 
-        # Update history table
-        db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, transaction_type, transacted) VALUES (?,?,?,?,'buy',?)",
-            session["user_id"],
-            symbol,
-            shares,
-            quote["price"],
-            transacted,
-        )
-
         # Query database for symbol in portfolio
         row = db.execute(
             "SELECT * FROM portfolios WHERE user_id = ? AND symbol = ?",
@@ -236,6 +243,17 @@ def buy():
 
         # Update balance
         balance = balance - cost
+
+        # Update history table
+        db.execute(
+            "INSERT INTO history (user_id, symbol, shares, price, balance, transacted) VALUES (?,?,?,?,?,?)",
+            session["user_id"],
+            symbol,
+            shares,
+            quote["price"],
+            balance,
+            transacted,
+        )
 
         # Update cash in users table
         db.execute(
@@ -431,11 +449,11 @@ def sell():
             return redirect("/sell")
 
         # Add total sale value to cash balance
-        cash = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
-        cash = cash[0]["cash"] + quote["price"] * shares
+        balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
+        balance = balance[0]["cash"] + quote["price"] * shares
 
         # Update user's cash balance
-        db.execute("UPDATE users SET cash = ? WHERE id = ?", cash, session["user_id"])
+        db.execute("UPDATE users SET cash = ? WHERE id = ?", balance, session["user_id"])
 
         # Subtract sold shares from portfolio
         shares = rows[0]["shares"] - shares
@@ -462,11 +480,12 @@ def sell():
 
         # Update history table
         db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, transaction_type, transacted) VALUES (?,?,?,?,'sell',?)",
+            "INSERT INTO history (user_id, symbol, shares, price, balance, transacted) VALUES (?,?,?,?,?,?)",
             session["user_id"],
             symbol,
             "-" + shares,
             quote["price"],
+            balance,
             transacted,
         )
 
