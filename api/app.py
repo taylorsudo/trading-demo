@@ -108,31 +108,6 @@ def calculate_gains_losses(key):
     return gain_loss, percent_change
 
 
-@app.route('/timescale', methods=['GET'])
-@login_required
-def jsonify_data():
-    tab = request.args.get("tab")
-    balance_history = get_balance_history(tab)
-    gain_loss, percent_change = calculate_gains_losses(tab)
-    data = {}
-    chart_data = {}
-
-    # Add the date and balance to the chart_data dictionary
-    for date_str, balance in balance_history.items():
-        chart_data[date_str] = balance
-
-    # Add 'gain_loss' and 'chart_data' to the 'data' dictionary
-    data[tab] = {
-        "gain_loss": gain_loss,
-        "percent_change": percent_change,
-        "chart_data": chart_data
-    }
-
-    print(data)
-
-    return jsonify(data)
-
-
 class Portfolio:
     def __init__(self): # Rows in user's portfolio
         self.portfolio = db.execute(
@@ -181,6 +156,31 @@ def index():
     return render_template(
         "index.html", rows=rows, cash=cash, total=total, tabs=tabs
     )
+
+
+@app.route('/timescale', methods=['GET'])
+@login_required
+def jsonify_data():
+    tab = request.args.get("tab")
+    balance_history = get_balance_history(tab)
+    gain_loss, percent_change = calculate_gains_losses(tab)
+    data = {}
+    chart_data = {}
+
+    # Add the date and balance to the chart_data dictionary
+    for date_str, balance in balance_history.items():
+        chart_data[date_str] = balance
+
+    # Add 'gain_loss' and 'chart_data' to the 'data' dictionary
+    data[tab] = {
+        "gain_loss": gain_loss,
+        "percent_change": percent_change,
+        "chart_data": chart_data
+    }
+
+    print(data)
+
+    return jsonify(data)
 
 
 @app.route("/buy", methods=["GET", "POST"])
