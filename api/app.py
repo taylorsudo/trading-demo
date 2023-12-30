@@ -67,7 +67,7 @@ def get_balance_history(key):
 
     # Retrieve balance history from earliest to latest
     query = """
-        SELECT transacted, balance
+        SELECT transacted, total
         FROM history
         WHERE user_id = :user_id AND transacted >= :start_date
         ORDER BY transacted ASC
@@ -82,13 +82,14 @@ def get_balance_history(key):
     dictionary = {}
     for transaction in balance_history:
         date_str = transaction["transacted"].strftime("%Y-%m-%d")
-        dictionary[date_str] = transaction["balance"]
+        dictionary[date_str] = transaction["total"]
 
     return dictionary
 
 
 def calculate_gains_losses(key):
     balance_history = get_balance_history(key)
+    portfolio = Portfolio()
 
     # Check if balance_history is empty or has insufficient data
     if not balance_history or len(balance_history) < 2:
@@ -96,7 +97,7 @@ def calculate_gains_losses(key):
 
     # Get earliest and latest balance values from history
     earliest_value = list(balance_history.values())[0]
-    latest_value = list(balance_history.values())[-1]
+    latest_value = portfolio.total()
 
     # Calculate the absolute gain/loss
     gain_loss = latest_value - earliest_value
@@ -132,36 +133,53 @@ def jsonify_data():
     return jsonify(data)
 
 
+class Portfolio:
+    def __init__(self): # Rows in user's portfolio
+        self.portfolio = db.execute(
+            "SELECT * FROM portfolios WHERE user_id = :user_id ORDER BY symbol ASC",
+            user_id=session["user_id"],
+        )
+
+    def rows(self): # Rows in user's portfolio
+        return self.portfolio
+
+    def cash(self):
+        cash = db.execute(
+            "SELECT cash FROM users WHERE id = :user_id", user_id=session["user_id"]
+        )
+
+        # Check if cash is not empty before accessing its elements
+        cash_amount = cash[0]["cash"] if cash else 0
+        return cash_amount
+
+    def total(self):
+        portfolio = self.rows()
+        total_value = self.cash()
+
+        # Look up stocks and get total value
+        for row in portfolio:
+            row["price"] = lookup(row["symbol"])["price"]
+            row["total"] = row["price"] * row["shares"]
+
+            # Increment total
+            total_value += row["total"]
+
+        return total_value
+
+
 @app.route("/")
 @login_required
 def index():
     """Show portfolio of stocks"""
     tabs = list(timescale.keys())
 
-    # Get user's portfolio and cash
-    rows = db.execute(
-        "SELECT * FROM portfolios WHERE user_id = :user_id ORDER BY symbol ASC",
-        user_id=session["user_id"],
-    )
-    cash = db.execute(
-        "SELECT cash FROM users WHERE id = :user_id", user_id=session["user_id"]
-    )
+    portfolio = Portfolio()
+    rows = portfolio.rows()
+    cash = portfolio.cash()
+    total = portfolio.total()
 
-    # Check if cash is not empty before accessing its elements
-    cash_value = cash[0]["cash"] if cash else 0
-    total = cash_value if cash_value else 0
-
-    # Get stock name, current value, and total value
-    for row in rows:
-        row["price"] = lookup(row["symbol"])["price"]
-        row["total"] = row["price"] * row["shares"]
-
-        # Increment total
-        total += row["total"]
-
-    # Render home page
     return render_template(
-        "index.html", rows=rows, cash=cash_value, total=total, tabs=tabs
+        "index.html", rows=rows, cash=cash, total=total, tabs=tabs
     )
 
 
@@ -239,12 +257,9 @@ def buy():
                 shares,
             )
 
-        # Update balance
-        balance = balance - cost
-
         # Update history table
         db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, balance, transacted) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO history (user_id, symbol, shares, price, total, transacted) VALUES (?,?,?,?,?,?)",
             session["user_id"],
             symbol,
             shares,
@@ -252,6 +267,9 @@ def buy():
             balance,
             transacted,
         )
+
+        # Update balance
+        balance = balance - cost
 
         # Update cash in users table
         db.execute(
@@ -478,7 +496,7 @@ def sell():
 
         # Update history table
         db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, balance, transacted) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO history (user_id, symbol, shares, price, total, transacted) VALUES (?,?,?,?,?,?)",
             session["user_id"],
             symbol,
             "-" + shares,
