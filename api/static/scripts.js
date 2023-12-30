@@ -7,14 +7,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 var data = JSON.parse(xhr.responseText);
 
                 // Extract the total gains/losses and chart data
-                // var gainsLosses = data[tab].gain_loss;
-                var gainsLosses = data[tab].gain_loss;
+                var gainLoss = data[tab].gain_loss.toFixed(2);
+                var percentChange = data[tab].percent_change.toFixed(2);
                 var chartData = data[tab].chart_data;
 
-                document.querySelector('#gains-losses').innerHTML = gainsLosses;
+                document.querySelector('#gains-losses').innerHTML = gainLoss;
 
                 // Update the gains/losses text colour
-                if (gainsLosses < 0) {
+                if (gainLoss < 0) {
                     document.getElementById("gains-losses").className = "text-danger";
                 } else {
                     document.getElementById("gains-losses").className = "text-success";
@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Balance',
+                            label: percentChange,
                             data: dataPoints,
                             borderColor: 'blue',
                             fill: true
