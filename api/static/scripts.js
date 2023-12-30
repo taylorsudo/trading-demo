@@ -6,8 +6,19 @@ document.addEventListener("DOMContentLoaded", function() {
             if (xhr.readyState == 4 && xhr.status == 200) {
                 var data = JSON.parse(xhr.responseText);
 
-                // Extract the chart data
+                // Extract the total gains/losses and chart data
+                // var gainsLosses = data[tab].gain_loss;
+                var gainsLosses = data[tab].gain_loss;
                 var chartData = data[tab].chart_data;
+
+                document.querySelector('#gains-losses').innerHTML = gainsLosses;
+
+                // Update the gains/losses text colour
+                if (gainsLosses < 0) {
+                    document.getElementById("gains-losses").className = "text-danger";
+                } else {
+                    document.getElementById("gains-losses").className = "text-success";
+                }
 
                 // Get the canvas element
                 var canvas = document.getElementById(tab + "-chart");

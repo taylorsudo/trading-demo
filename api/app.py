@@ -75,6 +75,8 @@ def get_balance_history(key):
 
     # Get list of dictionaries (hash maps)
     balance_history = db.execute(query, user_id=session["user_id"], start_date=start_date)
+    if not balance_history:
+        return {}
 
     # Pass values into single dictionary
     dictionary = {}
@@ -90,16 +92,19 @@ def calculate_gains_losses(key):
 
     # Check if balance_history is empty or has insufficient data
     if not balance_history or len(balance_history) < 2:
-        return 0  # or some default value indicating no gain/loss
+        return 0, 0  # No gain/loss and no percent change
 
     # Get earliest and latest balance values from history
     earliest_value = list(balance_history.values())[0]
     latest_value = list(balance_history.values())[-1]
 
-    # Calculate the difference
+    # Calculate the absolute gain/loss
     gain_loss = latest_value - earliest_value
 
-    return gain_loss
+    # Calculate the percentage change
+    percent_change = (gain_loss / earliest_value) * 100
+
+    return gain_loss, percent_change
 
 
 @app.route('/timescale', methods=['GET'])
@@ -107,7 +112,7 @@ def calculate_gains_losses(key):
 def jsonify_data():
     tab = request.args.get("tab")
     balance_history = get_balance_history(tab)
-    gain_loss = calculate_gains_losses(tab)
+    gain_loss, percent_change = calculate_gains_losses(tab)
     data = {}
     chart_data = {}
 
@@ -118,6 +123,7 @@ def jsonify_data():
     # Add 'gain_loss' and 'chart_data' to the 'data' dictionary
     data[tab] = {
         "gain_loss": gain_loss,
+        "percent_change": percent_change,
         "chart_data": chart_data
     }
 
