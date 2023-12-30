@@ -15,14 +15,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 var gainsLossesId = 'gains-losses-' + tab;
                 var gainsLossesElement = document.querySelector('#' + gainsLossesId);
 
+                // Create a unique identifier for percent change element based on the tab
+                var percentChangeID = 'percent-change-' + tab;
+                var percentChangeElement = document.querySelector('#' + percentChangeID);
+
                 // Update the gains/losses text content
                 gainsLossesElement.innerHTML = gainLoss;
+                percentChangeElement.innerHTML = percentChange
 
                 // Update the gains/losses text color
                 if (gainLoss < 0) {
                     gainsLossesElement.className = "text-danger";
+                    percentChangeElement.className = "text-danger";
                 } else {
                     gainsLossesElement.className = "text-success";
+                    percentChangeElement.className = "text-success";
                 }
 
                 // Get the canvas element
@@ -44,7 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: percentChange,
+                            label: "Portfolio Value",
                             data: dataPoints,
                             borderColor: 'blue',
                             fill: true

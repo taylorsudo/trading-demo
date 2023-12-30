@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Portfolio
+Portfolio
 {% endblock %}
 
 {% block main %}
@@ -18,7 +18,14 @@
     <section class="tab-content mt-2">
         {% for tab in tabs %}
         <article class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}-content">
-            <h2 id="gains-losses-{{ tab }}"><!-- Placeholder for total gains/losses --></h2>
+            <div class="row justify-content-sm-center">
+                <div class="col-md-auto">
+                    <h3 id="gains-losses-{{ tab }}"></h3>
+                </div>
+                <div class="col-md-auto">
+                    <h3 id="percent-change-{{ tab }}"></h3>
+                </div>
+            </div>
             <canvas id="{{ tab }}-chart"><!-- Placeholder for chart --></canvas>
         </article>
         {% endfor %}
