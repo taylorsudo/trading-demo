@@ -8,7 +8,7 @@
 
 <!-- Gains/Losses -->
 <article class="container mt-5">
-    <nav class="nav nav-pills nav-justified" id="timeScaleTabs">
+    <nav class="nav nav-pills nav-justified" id="timescale-tabs">
         {% for tab in tabs %}
         <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ tab }}" data-bs-toggle="pill"
             href="#{{ tab }}-content">{{ tab }}</a>
@@ -18,7 +18,7 @@
     <section class="tab-content mt-2">
         {% for tab in tabs %}
         <article class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}-content">
-            <h2 id="{{ tab }}-gains-losses"><!-- Placeholder for total gains/losses --></h2>
+            <h2 id="gains-losses-{{ tab }}"><!-- Placeholder for total gains/losses --></h2>
             <canvas id="{{ tab }}-chart"><!-- Placeholder for chart --></canvas>
         </article>
         {% endfor %}

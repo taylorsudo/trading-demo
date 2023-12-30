@@ -1,8 +1,8 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     function updateTab(tab) {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", "/timescale?tab=" + tab, true);
-        xhr.onreadystatechange = function() {
+        xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 && xhr.status == 200) {
                 var data = JSON.parse(xhr.responseText);
 
@@ -11,13 +11,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 var percentChange = data[tab].percent_change.toFixed(2);
                 var chartData = data[tab].chart_data;
 
-                document.querySelector('#gains-losses').innerHTML = gainLoss;
+                // Create a unique identifier for gains/losses element based on the tab
+                var gainsLossesId = 'gains-losses-' + tab;
+                var gainsLossesElement = document.querySelector('#' + gainsLossesId);
 
-                // Update the gains/losses text colour
+                // Update the gains/losses text content
+                gainsLossesElement.innerHTML = gainLoss;
+
+                // Update the gains/losses text color
                 if (gainLoss < 0) {
-                    document.getElementById("gains-losses").className = "text-danger";
+                    gainsLossesElement.className = "text-danger";
                 } else {
-                    document.getElementById("gains-losses").className = "text-success";
+                    gainsLossesElement.className = "text-success";
                 }
 
                 // Get the canvas element
@@ -55,15 +60,15 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // Event listener for tab clicks
-    var tabs = document.querySelectorAll("#timeScaleTabs a");
-    tabs.forEach(function(tab) {
-        tab.addEventListener("click", function() {
+    var tabs = document.querySelectorAll("#timescale-tabs a");
+    tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
             var tabId = this.id;
             updateTab(tabId);
         });
     });
 
     // Initial load (for the default active tab)
-    var defaultTab = document.querySelector("#timeScaleTabs .active").id;
+    var defaultTab = document.querySelector("#timescale-tabs .active").id;
     updateTab(defaultTab);
 });
