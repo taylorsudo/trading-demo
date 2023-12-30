@@ -7,18 +7,11 @@ Portfolio
 {% block main %}
 
 <!-- Gains/Losses -->
-<article class="container mt-5">
-    <nav class="nav nav-pills nav-justified" id="timescale-tabs">
-        {% for tab in tabs %}
-        <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ tab }}" data-bs-toggle="pill"
-            href="#{{ tab }}-content">{{ tab }}</a>
-        {% endfor %}
-    </nav>
-
-    <section class="tab-content mt-2">
+<article class="container">
+    <section class="tab-content mb-5">
         {% for tab in tabs %}
         <article class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tab }}-content">
-            <div class="row justify-content-sm-center">
+            <div class="row justify-content-sm-center mb-4">
                 <div class="col-md-auto">
                     <h3 id="gains-losses-{{ tab }}"></h3>
                 </div>
@@ -26,10 +19,17 @@ Portfolio
                     <h3 id="percent-change-{{ tab }}"></h3>
                 </div>
             </div>
+            <nav class="nav nav-pills nav-justified" id="timescale-tabs">
+                {% for tab in tabs %}
+                <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ tab }}" data-bs-toggle="pill"
+                    href="#{{ tab }}-content">{{ tab }}</a>
+                {% endfor %}
+            </nav>
             <canvas id="{{ tab }}-chart"><!-- Placeholder for chart --></canvas>
         </article>
         {% endfor %}
     </section>
+
 </article>
 
 <!-- Portfolio -->

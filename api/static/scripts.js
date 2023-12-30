@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Update the gains/losses text content
                 gainsLossesElement.innerHTML = gainLoss;
-                percentChangeElement.innerHTML = percentChange
+                percentChangeElement.innerHTML = "(" + percentChange + "%)"
 
                 // Update the gains/losses text color
                 if (gainLoss < 0) {
