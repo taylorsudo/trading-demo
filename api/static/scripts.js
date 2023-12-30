@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", function() {
                             label: 'Balance',
                             data: dataPoints,
                             borderColor: 'blue',
-                            fill: false
+                            fill: true
                         }]
                     },
                     options: {

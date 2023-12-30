@@ -88,23 +88,16 @@ def get_balance_history(key):
 def calculate_gains_losses(key):
     balance_history = get_balance_history(key)
 
-    # Initialize gain_loss dictionary to store gain or loss for each date
-    gain_loss = {}
+    # Check if balance_history is empty or has insufficient data
+    if not balance_history or len(balance_history) < 2:
+        return 0  # or some default value indicating no gain/loss
 
-    # Get sorted list of dates from balance history
-    dates = sorted(balance_history.keys())
+    # Get earliest and latest balance values from history
+    earliest_value = list(balance_history.values())[0]
+    latest_value = list(balance_history.values())[-1]
 
-    # Calculate gain or loss for each date
-    for i in range(len(dates)):
-        date = dates[i]
-        balance = balance_history[date]
-
-        # Calculate gain or loss for the current date
-        if i == 0:
-            gain_loss[date] = 0  # Initial date, set gain_loss to 0
-        else:
-            previous_balance = balance_history[dates[i - 1]]
-            gain_loss[date] = balance - previous_balance
+    # Calculate the difference
+    gain_loss = latest_value - earliest_value
 
     return gain_loss
 
@@ -123,11 +116,10 @@ def jsonify_data():
         chart_data[date_str] = balance
 
     # Add 'gain_loss' and 'chart_data' to the 'data' dictionary
-    for date_str, balance in balance_history.items():
-        data[tab] = {
-            "gain_loss": gain_loss.get(date_str, 0),  # Use get method to handle missing dates
-            "chart_data": chart_data
-        }
+    data[tab] = {
+        "gain_loss": gain_loss,
+        "chart_data": chart_data
+    }
 
     print(data)
 
