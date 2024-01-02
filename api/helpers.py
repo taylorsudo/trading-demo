@@ -19,7 +19,7 @@ if postgres_url.startswith("postgres://"):
 class Timescale:
     def __init__(self):
         self.timescale = {
-            "1D": 0,
+            "1D": 1,
             "5D": 5,
             "1M": 30,
             "6M": 180,
