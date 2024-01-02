@@ -67,8 +67,6 @@ def get_timescale():
         "chart_data": chart_data
     }
 
-    print(data)
-
     return data
 
 
