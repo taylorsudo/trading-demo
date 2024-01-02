@@ -6,7 +6,7 @@
 
 Adapted from CS50's Problem Set 9: Finance, [**Trading Demo**](https://tradingdemo.vercel.app/) is a paper trading app via which you can explore financial data, monitor live stock prices, and make informed decisions for portfolio growth. With brand new features including an interactive graph with historical data, this robust stock market simulator allows you to practice and learn investment strategies in a realistic environment.
 
-[![Video Demo](api/static/screenshot.png)](https://tradingdemo.vercel.app/)
+[![Video Demo](api/static/screenshot.png)](https://youtu.be/Qz9-FsW8Kkg)
 
 ## Features
 
@@ -43,7 +43,7 @@ class Timescale:
 
     def get_value(self, key):
         # Return the earliest date for the given timescale
-        num_days = self.timescale.get(f"{key.upper()}")
+        num_days = self.timescale.get(key)
         date = datetime.now() - timedelta(days=num_days)
         return date
 ```
