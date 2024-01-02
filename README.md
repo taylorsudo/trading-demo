@@ -27,7 +27,7 @@ class Timescale:
     def __init__(self):
         # Dictionary defining time intervals and their corresponding days
         self.timescale = {
-            "1D": 0,
+            "1D": 1,
             "5D": 5,
             "1M": 30,
             "6M": 180,
