@@ -84,10 +84,10 @@ def buy():
         transacted = datetime.now().strftime("%F %T.%f")
         total = db.get_total()
 
-        # Flash error if input is blank or symbol does not exist
-        if quote == None:
-            flash("Symbol not found", "danger")
-            return redirect("/buy")
+        # Flash error if symbol does not exist
+        if not quote:
+            flash("Invalid stock symbol", "danger")
+            return render_template("buy.html")
 
         # If shares is digit, convert shares to integer
         if qty.isdigit():
@@ -96,7 +96,7 @@ def buy():
         # Else flash error
         else:
             flash("You cannot purchase partial shares", "danger")
-            return redirect("/buy")
+            return render_template("buy.html")
 
         # Calculate cost of transaction
         cost = quote["price"] * qty
@@ -107,7 +107,7 @@ def buy():
         # Flash error if balance less than cost
         if balance < cost:
             flash("Insufficient funds", "danger")
-            return redirect("/buy")
+            return render_template("buy.html")
 
         # Query database for symbol in portfolio
         row = db.get_shares(symbol)
@@ -210,17 +210,12 @@ def quote():
 
         # Ensure user provides symbol
         if not symbol:
-            flash("Symbol is required", "danger")
-            return redirect("/quote")
-
-        # Ensure stock is valid
-        elif symbol == None:
             flash("Invalid stock symbol", "danger")
-            return redirect("/quote")
+            return render_template("quote.html")
 
         # Display the results
         flash(f"A share of {symbol['symbol']} costs ${symbol['price']}.", "primary")
-        return redirect("/quote")
+        return render_template("quote.html")
 
     # Else if requested via GET, display quote form
     else:
@@ -283,12 +278,12 @@ def sell():
         # Ensure symbol exists in portfolio
         if len(portfolio_symbol) != 1:
             flash("Must provide valid stock symbol", "danger")
-            return redirect("/sell")
+            return render_template("sell.html")
 
         # Ensure user has enough shares
         if portfolio_symbol[0]["shares"] < qty:
             flash("Insufficient shares", "danger")
-            return redirect("/sell")
+            return render_template("sell.html")
 
         # Add total sale value to cash balance
         balance = db.get_cash()
@@ -356,7 +351,7 @@ def password():
             or not request.form.get("confirm_password")
         ):
             flash("Must provide password", "danger")
-            return redirect("/account")
+            return render_template("account.html")
 
         # Get user input from form
         old = request.form.get("old_password")
@@ -369,12 +364,12 @@ def password():
         # Ensure user inputs correct password
         if not check_password_hash(hash, old):
             flash("Incorrect password", "danger")
-            return redirect("/account")
+            return render_template("account.html")
 
         # If confirmation doesn't match password
         if new != confirmation:
             flash("Passwords do not match", "danger")
-            return redirect("/account")
+            return render_template("account.html")
 
         # Hash new password
         hash = generate_password_hash(new)
