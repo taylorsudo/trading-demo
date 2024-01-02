@@ -1,36 +1,21 @@
 import os
 import redis
 
-from cs50 import SQL
-from datetime import datetime, timedelta
-from dotenv import load_dotenv  # environment variables
-from flask import Flask, flash, redirect, render_template, request, session, jsonify
+from datetime import datetime
+from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
-from helpers import login_required, lookup, usd  # .helpers
-
-# Load environment variables
-load_dotenv("/workspaces/126066949/project/vercel.env")
+from .helpers import Database, Timescale, login_required, lookup, usd
 
 # Configure application
 app = Flask(__name__)
-
-# Custom filter
+app.secret_key = os.getenv("SECRET_KEY")
 app.jinja_env.filters["usd"] = usd
 
-# Configure secret key
-# app.secret_key = os.getenv("SECRET_KEY")
-
-# Get environment variables for Postgres
-postgres_url = os.getenv("POSTGRES_URL")
-if postgres_url.startswith("postgres://"):
-    postgres_url = postgres_url.replace("postgres://", "postgresql://")
-db = SQL(postgres_url + "?sslmode=require")
-
-# Configure Flask to use the Redis session interface
+# Configure Flask to use Redis session interface
 app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_PERMANENT"] = False
-# app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_USE_SIGNER'] = True
 kv_url = os.getenv("KV_URL")
 if kv_url.startswith("redis://"):
     kv_url = kv_url.replace("redis://", "rediss://")
@@ -38,120 +23,24 @@ app.config["SESSION_REDIS"] = redis.from_url(kv_url)
 
 # Initialise the Flask-Session extension
 Session(app)
-
-
-# Initialise timescale variable
-timescale = {
-    "1D": 1,
-    "5D": 5,
-    "1M": 30,
-    "6M": 180,
-    "YTD": (datetime.now() - datetime(datetime.now().year, 1, 1)).days,
-    "1Y": 365,
-    "5Y": 5 * 365,
-}
-
-
-def get_timescale_value(key):
-    # Get value of timescale key
-    num_days = timescale.get(f"{key.upper()}")
-
-    # Return earliest date for the given timescale
-    date = datetime.now() - timedelta(days=num_days)
-    return date
-
-
-def get_balance_history(key):
-    # Get earliest date from function
-    start_date = get_timescale_value(key)
-
-    # Retrieve balance history from earliest to latest
-    query = """
-        SELECT transacted, total
-        FROM history
-        WHERE user_id = :user_id AND transacted >= :start_date
-        ORDER BY transacted ASC
-    """
-
-    # Get list of dictionaries (hash maps)
-    balance_history = db.execute(query, user_id=session["user_id"], start_date=start_date)
-    if not balance_history:
-        return {}
-
-    # Pass values into single dictionary
-    dictionary = {}
-    for transaction in balance_history:
-        date_str = transaction["transacted"].strftime("%Y-%m-%d")
-        dictionary[date_str] = transaction["total"]
-
-    return dictionary
-
-
-def calculate_gains_losses(key):
-    balance_history = get_balance_history(key)
-    portfolio = Portfolio()
-
-    # Check if balance_history is empty or has insufficient data
-    if not balance_history or len(balance_history) < 2:
-        return 0, 0  # No gain/loss and no percent change
-
-    # Get earliest and latest balance values from history
-    earliest_value = list(balance_history.values())[0]
-    latest_value = portfolio.total()
-
-    # Calculate the absolute gain/loss
-    gain_loss = latest_value - earliest_value
-
-    # Calculate the percentage change
-    percent_change = (gain_loss / earliest_value) * 100
-
-    return gain_loss, percent_change
-
-
-class Portfolio:
-    def __init__(self): # Rows in user's portfolio
-        self.portfolio = db.execute(
-            "SELECT * FROM portfolios WHERE user_id = :user_id ORDER BY symbol ASC",
-            user_id=session["user_id"],
-        )
-
-    def rows(self): # Rows in user's portfolio
-        return self.portfolio
-
-    def cash(self):
-        cash = db.execute(
-            "SELECT cash FROM users WHERE id = :user_id", user_id=session["user_id"]
-        )
-
-        # Check if cash is not empty before accessing its elements
-        cash_amount = cash[0]["cash"] if cash else 0
-        return cash_amount
-
-    def total(self):
-        portfolio = self.rows()
-        total_value = self.cash()
-
-        # Look up stocks and get total value
-        for row in portfolio:
-            row["price"] = lookup(row["symbol"])["price"]
-            row["total"] = row["price"] * row["shares"]
-
-            # Increment total
-            total_value += row["total"]
-
-        return total_value
+db = Database()
+timescale = Timescale()
 
 
 @app.route("/")
 @login_required
 def index():
     """Show portfolio of stocks"""
-    tabs = list(timescale.keys())
+    tabs = timescale.get_keys()
+    rows = db.get_portfolio()
+    cash = db.get_cash()
+    total = cash
 
-    portfolio = Portfolio()
-    rows = portfolio.rows()
-    cash = portfolio.cash()
-    total = portfolio.total()
+    for row in rows:
+        row["price"] = lookup(row["symbol"])["price"]
+        row["total"] = row["price"] * row["shares"]
+        total += row["total"]
+    total = round(total, 2)
 
     return render_template(
         "index.html", rows=rows, cash=cash, total=total, tabs=tabs
@@ -160,16 +49,16 @@ def index():
 
 @app.route('/timescale', methods=['GET'])
 @login_required
-def jsonify_data():
+def get_timescale():
     tab = request.args.get("tab")
-    balance_history = get_balance_history(tab)
-    gain_loss, percent_change = calculate_gains_losses(tab)
+    totals_history = db.get_totals_history(tab)
+    gain_loss, percent_change = db.get_totals_difference(tab)
     data = {}
     chart_data = {}
 
     # Add the date and balance to the chart_data dictionary
-    for date_str, balance in balance_history.items():
-        chart_data[date_str] = balance
+    for date, balance in totals_history.items():
+        chart_data[date] = balance
 
     # Add 'gain_loss' and 'chart_data' to the 'data' dictionary
     data[tab] = {
@@ -180,21 +69,20 @@ def jsonify_data():
 
     print(data)
 
-    return jsonify(data)
+    return data
 
 
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
 def buy():
     """Buy shares of stock"""
-
-    # If form submitted via POST
     if request.method == "POST":
         # Get form input
         symbol = request.form.get("symbol").upper()
-        shares = request.form.get("shares")
+        qty = request.form.get("shares")
         quote = lookup(symbol)
         transacted = datetime.now().strftime("%F %T.%f")
+        total = db.get_total()
 
         # Flash error if input is blank or symbol does not exist
         if quote == None:
@@ -202,25 +90,19 @@ def buy():
             return redirect("/buy")
 
         # If shares is digit, convert shares to integer
-        if shares.isdigit():
-            shares = int(request.form.get("shares"))
+        if qty.isdigit():
+            qty = int(request.form.get("shares"))
 
         # Else flash error
         else:
             flash("You cannot purchase partial shares", "danger")
             return redirect("/buy")
 
-        # Flash error if number of shares not given
-        if not shares:
-            flash("Must provide number of shares", "danger")
-            return redirect("/buy")
-
         # Calculate cost of transaction
-        cost = quote["price"] * shares
+        cost = quote["price"] * qty
 
-        # SELECT how much cash the user currently has in users
-        balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
-        balance = balance[0]["cash"]
+        # Select how much cash the user currently has in users
+        balance = db.get_cash()
 
         # Flash error if balance less than cost
         if balance < cost:
@@ -228,56 +110,32 @@ def buy():
             return redirect("/buy")
 
         # Query database for symbol in portfolio
-        row = db.execute(
-            "SELECT * FROM portfolios WHERE user_id = ? AND symbol = ?",
-            session["user_id"],
-            symbol,
-        )
+        row = db.get_shares(symbol)
 
         # If symbol exists in portfolio
         if len(row) == 1:
             # Update number of shares
-            shares = row[0]["shares"] + shares
+            shares = row[0]["shares"] + qty
 
             # Update shares in portfolios table
-            db.execute(
-                "UPDATE portfolios SET shares = ? WHERE user_id = ? AND symbol = ?",
-                shares,
-                session["user_id"],
-                symbol,
-            )
+            db.update_portfolio(symbol, shares)
 
         # Else if shares don't yet exist
         else:
             # Insert shares into portfolios table
-            db.execute(
-                "INSERT INTO portfolios (user_id, symbol, shares) VALUES (?,?,?)",
-                session["user_id"],
-                symbol,
-                shares,
-            )
-
-        # Update history table
-        db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, total, transacted) VALUES (?,?,?,?,?,?)",
-            session["user_id"],
-            symbol,
-            shares,
-            quote["price"],
-            balance,
-            transacted,
-        )
+            db.insert_shares(symbol, qty)
 
         # Update balance
         balance = balance - cost
 
+        # Update history table
+        db.update_history(symbol, qty, quote["price"], total, transacted)
+
         # Update cash in users table
-        db.execute(
-            "UPDATE users SET cash = ? where id = ?", balance, session["user_id"]
-        )
+        db.update_cash(balance)
 
         # Flash message
-        flash(f"Purchased {shares} share(s) of {symbol}", "success")
+        flash(f"Purchased {qty} share(s) of {symbol}", "success")
 
         # Redirect user to home page
         return redirect("/")
@@ -292,10 +150,7 @@ def buy():
 def history():
     """Show history of transactions"""
 
-    rows = db.execute(
-        "SELECT * FROM history WHERE user_id = ? ORDER BY transacted DESC",
-        session["user_id"],
-    )
+    rows = db.get_history()
 
     return render_template("history.html", rows=rows)
 
@@ -309,32 +164,22 @@ def login():
 
     # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
-        # Ensure username was submitted
-        if not request.form.get("username"):
-            flash("Must provide username", "danger")
-            return redirect("/login")
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-        # Ensure password was submitted
-        elif not request.form.get("password"):
-            flash("Must provide password", "danger")
-            return redirect("/login")
+        # Query database for email
+        rows = db.get_user(email)
 
-        # Query database for username
-        rows = db.execute(
-            "SELECT * FROM users WHERE username = ?", request.form.get("username")
-        )
-
-        # Ensure username exists and password is correct
+        # Ensure email address exists and password is correct
         if len(rows) != 1 or not check_password_hash(
-            rows[0]["hash"], request.form.get("password")
+            rows[0]["hash"], password
         ):
-            flash("Invalid username and/or password", "danger")
-            return redirect("/login")
+            flash("Invalid email address and/or password", "danger")
+            return render_template("login.html")
 
         # Remember which user has logged in
         session["user_id"] = rows[0]["id"]
 
-        # Redirect user to home page
         return redirect("/")
 
     # User reached route via GET (as by clicking a link or via redirect)
@@ -391,37 +236,27 @@ def register():
 
     # If form submitted via POST
     if request.method == "POST":
-        # Ensure username was submitted
-        if not request.form.get("username"):
-            flash("Must provide username", "danger")
-            return redirect("/register")
 
-        # Ensure password was submitted
-        elif not request.form.get("password"):
-            flash("Must provide password", "danger")
-            return redirect("/register")
+        # Store email and password hash
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirmation = request.form.get("confirmation")
+        hash = generate_password_hash(password)
 
         # Ensure password matches confirmation
-        elif request.form.get("password") != request.form.get("confirmation"):
+        if password != confirmation:
             flash("Passwords do not match", "danger")
-            return redirect("/register")
+            return render_template("register.html")
 
-        # Store username and password hash
-        username = request.form.get("username")
-        hash = generate_password_hash(request.form.get("password"))
+        try:
+            db.insert_user(email, hash)
 
-        # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ?", username)
+        except:
+            flash("Email address is already registered", "danger")
+            return render_template("register.html")
 
-        # Ensure username doesn't exist
-        if len(rows) != 0:
-            flash("Username is already taken", "danger")
-            return redirect("/register")
-
-        # Insert new user into users table
-        db.execute("INSERT INTO users (username, hash) VALUES (?,?)", username, hash)
-
-        # Redirect user to home page
+        session["user_id"] = db.get_user_id(email)
+        flash(f"Welcome to Trading Demo!", "success")
         return redirect("/")
 
     # Else if requested via GET, display registration form
@@ -438,75 +273,47 @@ def sell():
     if request.method == "POST":
         # Get user input
         symbol = request.form.get("symbol")
-        shares = int(request.form.get("shares"))
+        qty = int(request.form.get("shares"))
         quote = lookup(symbol)
         transacted = datetime.now().strftime("%F %T.%f")
+        total = db.get_total()
 
-        # Get user's portfolio
-        rows = db.execute(
-            "SELECT * FROM portfolios WHERE user_id = ? AND symbol = ?",
-            session["user_id"],
-            symbol,
-        )
+        portfolio_symbol = db.get_shares(symbol)
 
         # Ensure symbol exists in portfolio
-        if len(rows) != 1:
+        if len(portfolio_symbol) != 1:
             flash("Must provide valid stock symbol", "danger")
             return redirect("/sell")
 
-        # Ensure user provides shares
-        if not shares:
-            flash("Must provide number of shares", "danger")
-            return redirect("/sell")
-
         # Ensure user has enough shares
-        if rows[0]["shares"] < shares:
+        if portfolio_symbol[0]["shares"] < qty:
             flash("Insufficient shares", "danger")
             return redirect("/sell")
 
         # Add total sale value to cash balance
-        balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
-        balance = balance[0]["cash"] + quote["price"] * shares
+        balance = db.get_cash()
+        balance = balance + quote["price"] * qty
 
         # Update user's cash balance
-        db.execute("UPDATE users SET cash = ? WHERE id = ?", balance, session["user_id"])
+        db.update_cash(balance)
 
         # Subtract sold shares from portfolio
-        shares = rows[0]["shares"] - shares
+        shares = portfolio_symbol[0]["shares"] - qty
 
         # If shares remain, update portfolio
         if shares > 0:
-            db.execute(
-                "UPDATE portfolios SET shares = ? WHERE user_id = ? AND symbol = ?",
-                shares,
-                session["user_id"],
-                symbol,
-            )
+            db.update_portfolio(symbol, shares)
 
         # Else if no shares remain
         else:
-            db.execute(
-                "DELETE FROM portfolios WHERE symbol = ? AND user_id = ?",
-                symbol,
-                session["user_id"],
-            )
-
-        # Restore shares value for history
-        shares = request.form.get("shares")
+            db.delete_shares(symbol)
 
         # Update history table
-        db.execute(
-            "INSERT INTO history (user_id, symbol, shares, price, total, transacted) VALUES (?,?,?,?,?,?)",
-            session["user_id"],
-            symbol,
-            "-" + shares,
-            quote["price"],
-            balance,
-            transacted,
-        )
+        db.update_history(symbol, "-" + str(qty),
+        quote["price"], total, transacted)
 
         # Flash message
-        flash(f"Sold {shares} share(s) of {symbol}", "success")
+        flash(f"Sold {qty} share(s) of {symbol}", "success")
 
         # Redirect user to home page
         return redirect("/")
@@ -514,9 +321,7 @@ def sell():
     # Else if form submitted via GET
     else:
         # SELECT user's stocks
-        portfolio = db.execute(
-            "SELECT symbol FROM portfolios WHERE user_id = ?", session["user_id"]
-        )
+        portfolio = db.get_symbols()
 
         # Return sell form
         return render_template("sell.html", portfolio=portfolio)
@@ -558,9 +363,8 @@ def password():
         new = request.form.get("new_password")
         confirmation = request.form.get("confirm_password")
 
-        # Get user's previous password
-        hash = db.execute("SELECT hash FROM users WHERE id = ?", session["user_id"])
-        hash = hash[0]["hash"]
+        # Get hash of user's previous password
+        hash = db.get_password()
 
         # Ensure user inputs correct password
         if not check_password_hash(hash, old):
@@ -576,7 +380,7 @@ def password():
         hash = generate_password_hash(new)
 
         # Update hash in users table
-        db.execute("UPDATE users SET hash = ? WHERE id = ?", hash, session["user_id"])
+        db.update_password(hash)
 
         # Flash message
         flash("Password changed successfully", "success")

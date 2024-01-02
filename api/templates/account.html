@@ -6,15 +6,15 @@
 
 {% block main %}
 
-<form action="/password" method="post">
+<form action="/password" method="post" onsubmit="loader()">
     <div class="mb-3">
-        <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="old_password" placeholder="Old password" type="password">
+        <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="old_password" placeholder="Old password" type="password" required>
     </div>
     <div class="mb-3">
-        <input autocomplete="off" class="form-control mx-auto w-auto" name="new_password" placeholder="New password" type="password">
+        <input autocomplete="off" class="form-control mx-auto w-auto" name="new_password" placeholder="New password" type="password" required>
     </div>
     <div class="mb-3">
-        <input autocomplete="off" class="form-control mx-auto w-auto" name="confirm_password" placeholder="Confirm new password" type="password">
+        <input autocomplete="off" class="form-control mx-auto w-auto" name="confirm_password" placeholder="Confirm new password" type="password" required>
     </div>
     <button class="btn btn-primary" type="submit">Update password</button>
 </form>

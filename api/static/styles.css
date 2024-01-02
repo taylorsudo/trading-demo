@@ -1,27 +1,121 @@
-/* Size for brand */
-nav .navbar-brand
-{
-    font-size: xx-large;
+html {
+  width: 100%;
 }
 
-/* Colors for brand */
-nav .navbar-brand .blue
-{
-    color: #537fbe;
-}
-nav .navbar-brand .red
-{
-    color: #ea433b;
-}
-nav .navbar-brand .yellow
-{
-    color: #f5b82e;
-}
-nav .navbar-brand .green
-{
-    color: #2e944b;
+body {
+  width: 100%;
+  margin: 0;
 }
 
 a {
-    text-decoration: none;
+  text-decoration: none;
+}
+
+header,
+main {
+    padding: 0 20px;
+}
+
+nav .navbar-brand {
+  font-size: xx-large;
+}
+
+figure {
+  height: 50vh;
+}
+
+#timescale-tabs {
+  opacity: 0.9;
+  transition: 0.5s ease;
+}
+
+  #timescale-tabs:hover {
+    opacity: 1;
+  }
+
+
+/* Loader: https://www.w3schools.com/howto/howto_css_loader.asp */
+.loader {
+  display: block;
+  position: relative;
+  top: calc(50% - 10vh);
+  left: 50%;
+  z-index: 1;
+  width: 10vh;
+  height: 10vh;
+  margin: -5vh 0 0 -5vh;
+  border: 2vh solid rgba(var(--bs-tertiary-color-rgb), 0.1);
+  border-radius: 50%;
+  border-top: 2vh solid rgba(var(--bs-primary-rgb), 0.9);
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+}
+
+#loader {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 10vh;
+  height: 10vh;
+  margin: -5vh 0 0 -5vh;
+  border: 2vh solid rgba(var(--bs-tertiary-color-rgb), 0.1);
+  border-radius: 50%;
+  border-top: 2vh solid rgba(var(--bs-primary-rgb), 0.9);
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+}
+
+@-webkit-keyframes spin {
+  0% {
+      -webkit-transform: rotate(0deg);
+  }
+
+  100% {
+      -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  0% {
+      transform: rotate(0deg);
+  }
+
+  100% {
+      transform: rotate(360deg);
+  }
+}
+
+/* Animate page content */
+.animate-bottom {
+  position: relative;
+  -webkit-animation-name: animatebottom;
+  -webkit-animation-duration: 1s;
+  animation-name: animatebottom;
+  animation-duration: 1s
+}
+
+@-webkit-keyframes animatebottom {
+  from {
+      bottom: -100px;
+      opacity: 0
+  }
+
+  to {
+      bottom: 0px;
+      opacity: 1
+  }
+}
+
+@keyframes animatebottom {
+  from {
+      bottom: -100px;
+      opacity: 0
+  }
+
+  to {
+      bottom: 0;
+      opacity: 1
+  }
 }
