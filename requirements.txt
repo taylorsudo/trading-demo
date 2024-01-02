@@ -1,5 +1,4 @@
 cs50
-dotenv
 Flask
 Flask-Session
 pytz
