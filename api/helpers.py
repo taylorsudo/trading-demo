@@ -33,7 +33,7 @@ class Timescale:
         return keys
 
     def get_value(self, key):
-        num_days = self.timescale.get(f"{key.upper()}")
+        num_days = self.timescale.get(key)
 
         # Return earliest date for the given timescale
         date = datetime.now() - timedelta(days=num_days)
