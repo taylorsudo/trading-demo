@@ -1,17 +1,17 @@
 <p align="center">
-    <img src="api/static/td-logo.png" width="50%">
+    <img src="api/static/td-logo.png" width="25%">
 </p>
 
 # Trading Demo
 
-Adapted from CS50's Problem Set 9: Finance, [**Trading Demo**](https://tradingdemo.vercel.app/) is a paper trading app via which you can explore financial data, monitor live stock prices, and make informed decisions for portfolio growth. With brand new features including an interactive graph with historical data, this robust stock market simulator allows you to practice and learn investment strategies in a realistic environment.
+[**Trading Demo**](https://tradingdemo.vercel.app/) is a paper trading app via which you can monitor live stock prices and make informed decisions for portfolio growth. Building upon CS50's Problem Set 9: Finance, Paper Demo comes with brand new features including an interactive graph with historical data.
 
 [![Video Demo](api/static/screenshot.png)](https://youtu.be/Qz9-FsW8Kkg)
 
 ## Features
 
 - **Real-Time Market Data:** Access to real-time stock prices via the Yahoo Finance API.
-- **Performance Analytics:**: An interactive chart to track gains and losses over standard timescales, allowing users to monitor their overall performance.
+- **Performance Analytics:** An interactive chart to track gains and losses over standard timescales, allowing users to monitor their overall performance.
 - **Secure Online Storage:** Trading Demo uses a range of security measures for online data storage such as password hashing and session tokens, enabling users to securely access their Trading Demo accounts anywhere.
 
 ## Design & Architecture
@@ -25,7 +25,6 @@ The `Timescale` class defined in `helpers.py` is designed to manage different ti
 ```python
 class Timescale:
     def __init__(self):
-        # Dictionary defining time intervals and their corresponding days
         self.timescale = {
             "1D": 1,
             "5D": 5,
@@ -37,12 +36,10 @@ class Timescale:
         }
 
     def get_keys(self):
-        # Return a list of available timescale keys
         keys = list(self.timescale.keys())
         return keys
 
     def get_value(self, key):
-        # Return the earliest date for the given timescale
         num_days = self.timescale.get(key)
         date = datetime.now() - timedelta(days=num_days)
         return date
@@ -55,13 +52,11 @@ The `Database()` class in `helpers.py` encapsulates the interaction with the dat
 ```python
 class Database:
     def __init__(self):
-        # Initialize the database connection using the SQL module
         self.db = SQL(postgres_url + "?sslmode=require")
 
     # ... (methods for user-related queries, portfolio operations, and historical data)
 
     def get_total(self):
-        # Calculate the total value of the user's portfolio, including cash
         rows = self.get_portfolio()
         column = self.get_cash()
 
@@ -90,11 +85,9 @@ def get_timescale():
     data = {}
     chart_data = {}
 
-    # Add the date and balance to the chart_data dictionary
     for date, balance in totals_history.items():
         chart_data[date] = balance
 
-    # Add 'gain_loss' and 'chart_data' to the 'data' dictionary
     data[tab] = {
         "gain_loss": gain_loss,
         "percent_change": percent_change,
@@ -113,8 +106,6 @@ function updateTab(tab) {
         if (xhr.readyState == 4 && xhr.status == 200) {
             hideLoader(tab);
             var data = JSON.parse(xhr.responseText);
-
-            // Extract the total gains/losses and chart data
             var gainLoss = data[tab].gain_loss.toFixed(2);
             var percentChange = data[tab].percent_change.toFixed(2);
             var chartData = data[tab].chart_data;
