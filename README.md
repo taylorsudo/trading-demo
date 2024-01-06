@@ -4,9 +4,9 @@
 
 # Trading Demo
 
-[**Trading Demo**](https://tradingdemo.vercel.app/) is a paper trading app via which you can monitor live stock prices and make informed decisions for portfolio growth. Building upon CS50's Problem Set 9: Finance, Paper Demo comes with brand new features including an interactive graph with historical data.
+[**Trading Demo**](https://tradingdemo.vercel.app/) is a paper trading app via which you can monitor live stock prices and make informed decisions for portfolio growth. Building upon CS50's Problem Set 9: Finance, Trading Demo comes with brand new features including an interactive graph with historical data.
 
-[![Video Demo](api/static/screenshot.png)](https://youtu.be/Qz9-FsW8Kkg)
+[![Screenshot](api/static/screenshot.png)](https://tradingdemo.vercel.app/)
 
 ## Features
 
